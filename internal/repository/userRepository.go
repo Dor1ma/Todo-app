@@ -24,6 +24,14 @@ func (s *UserRepository) Close() {
 }
 
 func (r *UserRepository) Create(u *models.User) (*models.User, error) {
+	if err := u.Validate(); err != nil {
+		return nil, err
+	}
+
+	if err := u.BeforeCreate(); err != nil {
+		return nil, err
+	}
+
 	if err := r.db.QueryRow("INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id",
 		u.Name,
 		u.Email,
