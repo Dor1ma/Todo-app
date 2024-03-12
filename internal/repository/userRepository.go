@@ -60,11 +60,11 @@ func (r *UserRepository) FindByEmail(email string) (*models.User, error) {
 	return user, nil
 }
 
-func (r *UserRepository) FindByName(name string) (*models.User, error) {
+func (r *UserRepository) Find(id int) (*models.User, error) {
 	user := &models.User{}
 	if err := r.db.QueryRow(
-		"SELECT id, name, email, password_hash FROM users WHERE name = $1",
-		name,
+		"SELECT id, name, email, password_hash FROM users WHERE id = $1",
+		id,
 	).Scan(
 		&user.ID,
 		&user.Name,

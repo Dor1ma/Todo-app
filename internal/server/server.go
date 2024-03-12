@@ -3,6 +3,7 @@ package server
 import (
 	"Todo-app/internal/models"
 	"Todo-app/internal/repository"
+	"context"
 	"encoding/json"
 	"errors"
 	"github.com/gorilla/mux"
@@ -12,6 +13,12 @@ import (
 
 var (
 	errIncorrectEmailOrPassword = errors.New("incorrect email or password")
+	errNotAuthenticated         = errors.New("not authenticated")
+)
+
+const (
+	sessionName        = "tempSessionName"
+	ctxKeyUser  ctxKey = iota
 )
 
 type server struct {
@@ -19,6 +26,8 @@ type server struct {
 	userRepository repository.UserRepository
 	sessions       sessions.Store
 }
+
+type ctxKey int8
 
 func (s *server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	s.router.ServeHTTP(writer, request)
@@ -38,6 +47,10 @@ func newServer(userRepository repository.UserRepository, sessionStore sessions.S
 func (s *server) configureRouter() {
 	s.router.HandleFunc("/users", s.handleUsersCreate()).Methods("POST")
 	s.router.HandleFunc("/sessions", s.handleSessionsCreate()).Methods("POST")
+
+	private := s.router.PathPrefix("/private").Subrouter()
+	private.Use(s.authenticateUser)
+	private.HandleFunc("/whoami", s.handleWhoAmI()).Methods("GET")
 }
 
 func (s *server) handleUsersCreate() http.HandlerFunc {
@@ -70,7 +83,34 @@ func (s *server) handleUsersCreate() http.HandlerFunc {
 	}
 }
 
-const sessionName = "tempSessionName"
+func (s *server) authenticateUser(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		session, err := s.sessions.Get(r, sessionName)
+		if err != nil {
+			s.error(w, r, http.StatusInternalServerError, err)
+			return
+		}
+
+		id, ok := session.Values["user_id"]
+		if !ok {
+			s.error(w, r, http.StatusUnauthorized, errNotAuthenticated)
+			return
+		}
+
+		u, err := s.userRepository.Find(id.(int))
+		if err != nil {
+			s.error(w, r, http.StatusUnauthorized, errNotAuthenticated)
+		}
+
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKeyUser, u)))
+	})
+}
+
+func (s *server) handleWhoAmI() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.respond(w, r, http.StatusOK, r.Context().Value(ctxKeyUser).(*models.User))
+	}
+}
 
 func (s *server) handleSessionsCreate() http.HandlerFunc {
 	type request struct {
