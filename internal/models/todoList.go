@@ -16,3 +16,8 @@ func (t *ToDoList) Validate() error {
 		validation.Field(&t.Title, validation.Required, validation.Length(2, 100)),
 	)
 }
+
+type UpdateListInput struct {
+	Title       *string `json:"title"`
+	Description *string `json:"description"`
+}

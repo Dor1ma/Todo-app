@@ -9,18 +9,15 @@ type UserRepository struct {
 	db *sql.DB
 }
 
-func (s *UserRepository) Open() error {
-	connStr := "postgres://postgres:postgres@localhost:6432/postgres?sslmode=disable"
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		return err
-	}
-	s.db = db
-	return nil
+func NewUserRepository(db *sql.DB) *UserRepository {
+	return &UserRepository{db: db}
 }
 
 func (s *UserRepository) Close() {
-	s.db.Close()
+	err := s.db.Close()
+	if err != nil {
+		return
+	}
 }
 
 func (r *UserRepository) Create(u *models.User) (*models.User, error) {
