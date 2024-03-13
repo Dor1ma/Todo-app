@@ -4,6 +4,7 @@ import (
 	"Todo-app/internal/repository"
 	"database/sql"
 	"github.com/gorilla/sessions"
+	_ "github.com/lib/pq"
 	"net/http"
 )
 
@@ -15,16 +16,13 @@ func Start() error {
 	}
 
 	defer db.Close()
-	//temp key
-	userRepository := repository.UserRepository{}
-	err = userRepository.Open()
-	if err != nil {
-		return err
-	}
 
+	repos := repository.NewRepository(db)
+	//temp key
 	sessionStore := sessions.NewCookieStore([]byte("239239"))
-	srv := newServer(userRepository, sessionStore)
-	constAddr := "localhost:8080"
+	// don't forget to check that part
+	srv := newServer(*repos, sessionStore)
+	constAddr := ":8080"
 
 	return http.ListenAndServe(constAddr, srv)
 }

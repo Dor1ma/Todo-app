@@ -1,15 +1,14 @@
 package main
 
 import (
+	"Todo-app/internal/server"
 	"log"
-	"net/http"
 )
 
 func main() {
-	log.Println("Server is running on port 8080")
-	err := http.ListenAndServe("localhost:8080", nil)
-	if err != nil {
+	log.Println("Server is starting on port 8080")
+
+	if err := server.Start(); err != nil {
 		log.Fatal(err)
 	}
-
 }

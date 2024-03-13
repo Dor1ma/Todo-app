@@ -37,6 +37,7 @@ func newServer(repository repository.Repository, sessionStore sessions.Store) *s
 	s := &server{
 		router:     mux.NewRouter(),
 		repository: repository,
+		sessions:   sessionStore,
 	}
 
 	s.configureRouter()
