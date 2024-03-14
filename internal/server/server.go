@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"net/http"
+	"strconv"
 )
 
 var (
@@ -52,6 +53,20 @@ func (s *server) configureRouter() {
 	private := s.router.PathPrefix("/private").Subrouter()
 	private.Use(s.authenticateUser)
 	private.HandleFunc("/whoami", s.handleWhoAmI()).Methods("GET")
+
+	todos := private.PathPrefix("/todos").Subrouter()
+	todos.HandleFunc("/", s.handleTodosCreate()).Methods("POST")
+	todos.HandleFunc("/{id}", s.handleTodosUpdate()).Methods("PUT")
+	todos.HandleFunc("/{id}", s.handleTodosDelete()).Methods("DELETE")
+	todos.HandleFunc("/{id}", s.getListById()).Methods("GET")
+	todos.HandleFunc("/", s.getAllLists()).Methods("GET")
+
+	items := todos.PathPrefix("/{id}/items").Subrouter()
+	items.HandleFunc("/", s.getAllItems()).Methods("GET")
+	items.HandleFunc("/{id}", s.getItemById()).Methods("GET")
+	items.HandleFunc("/", s.createItem()).Methods("POST")
+	items.HandleFunc("/{id}", s.updateItem()).Methods("PUT")
+	items.HandleFunc("/{id}", s.deleteItem()).Methods("DELETE")
 }
 
 func (s *server) handleUsersCreate() http.HandlerFunc {
@@ -141,6 +156,268 @@ func (s *server) handleSessionsCreate() http.HandlerFunc {
 
 		session.Values["user_id"] = u.ID
 		if err := s.sessions.Save(r, w, session); err != nil {
+			s.error(w, r, http.StatusInternalServerError, err)
+			return
+		}
+
+		s.respond(w, r, http.StatusOK, nil)
+	}
+}
+
+func (s *server) handleTodosCreate() http.HandlerFunc {
+	type request struct {
+		Title       string `json:"title"`
+		Description string `json:"description"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		req := &request{}
+		if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+			s.error(w, r, http.StatusBadRequest, err)
+			return
+		}
+
+		userID := r.Context().Value(ctxKeyUser).(*models.User).ID
+
+		t := &models.ToDoList{
+			Title:       req.Title,
+			Description: req.Description,
+		}
+
+		if _, err := s.repository.TodoList.Create(userID, t); err != nil {
+			s.error(w, r, http.StatusUnprocessableEntity, err)
+			return
+		}
+
+		s.respond(w, r, http.StatusCreated, t)
+	}
+}
+
+func (s *server) handleTodosUpdate() http.HandlerFunc {
+	type request struct {
+		Title       string `json:"title"`
+		Description string `json:"description"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		req := &request{}
+		if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+			s.error(w, r, http.StatusBadRequest, err)
+			return
+		}
+
+		vars := mux.Vars(r)
+		id, err := strconv.Atoi(vars["id"])
+		if err != nil {
+			s.error(w, r, http.StatusBadRequest, err)
+			return
+		}
+
+		userID := r.Context().Value(ctxKeyUser).(*models.User).ID
+		t := &models.UpdateListInput{
+			Title:       &req.Title,
+			Description: &req.Description,
+		}
+
+		if err := s.repository.TodoList.Update(userID, id, t); err != nil {
+			s.error(w, r, http.StatusUnprocessableEntity, err)
+			return
+		}
+
+		s.respond(w, r, http.StatusOK, t)
+	}
+}
+
+func (s *server) handleTodosDelete() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		id, err := strconv.Atoi(vars["id"])
+		if err != nil {
+			s.error(w, r, http.StatusBadRequest, err)
+			return
+		}
+
+		if err := s.repository.TodoList.Delete(id, r.Context().Value(ctxKeyUser).(*models.User).ID); err != nil {
+			s.error(w, r, http.StatusUnprocessableEntity, err)
+			return
+		}
+
+		s.respond(w, r, http.StatusOK, nil)
+	}
+}
+
+func (s *server) getListById() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := r.Context().Value(ctxKeyUser).(*models.User)
+		userId := u.ID
+
+		vars := mux.Vars(r)
+		id, err := strconv.Atoi(vars["id"])
+		if err != nil {
+			s.error(w, r, http.StatusBadRequest, err)
+			return
+		}
+
+		list, err := s.repository.TodoList.GetById(userId, id)
+		if err != nil {
+			s.error(w, r, http.StatusInternalServerError, err)
+			return
+		}
+
+		s.respond(w, r, http.StatusOK, list)
+	}
+}
+
+func (s *server) getAllLists() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := r.Context().Value(ctxKeyUser).(*models.User)
+		userId := u.ID
+
+		lists, err := s.repository.TodoList.GetAll(userId)
+		if err != nil {
+			s.error(w, r, http.StatusInternalServerError, err)
+			return
+		}
+
+		s.respond(w, r, http.StatusOK, lists)
+	}
+}
+
+func (s *server) createItem() http.HandlerFunc {
+	type request struct {
+		Title       string `json:"title"`
+		Description string `json:"description"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		req := &request{}
+		if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+			s.error(w, r, http.StatusBadRequest, err)
+			return
+		}
+
+		vars := mux.Vars(r)
+		listId, err := strconv.Atoi(vars["id"])
+		if err != nil {
+			s.error(w, r, http.StatusBadRequest, err)
+			return
+		}
+
+		item := &models.ToDoItem{
+			Title:       req.Title,
+			Description: req.Description,
+			Done:        false,
+		}
+
+		id, err := s.repository.TodoItem.Create(listId, item)
+		if err != nil {
+			s.error(w, r, http.StatusInternalServerError, err)
+			return
+		}
+
+		s.respond(w, r, http.StatusOK, map[string]interface{}{
+			"id": id,
+		})
+	}
+}
+
+func (s *server) getAllItems() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := r.Context().Value(ctxKeyUser).(*models.User)
+		userId := u.ID
+
+		vars := mux.Vars(r)
+		listId, err := strconv.Atoi(vars["id"])
+		if err != nil {
+			s.error(w, r, http.StatusBadRequest, err)
+			return
+		}
+
+		items, err := s.repository.TodoItem.GetAll(userId, listId)
+		if err != nil {
+			s.error(w, r, http.StatusInternalServerError, err)
+			return
+		}
+
+		s.respond(w, r, http.StatusOK, items)
+	}
+}
+
+func (s *server) getItemById() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := r.Context().Value(ctxKeyUser).(*models.User)
+		userId := u.ID
+
+		vars := mux.Vars(r)
+		itemId, err := strconv.Atoi(vars["id"])
+		if err != nil {
+			s.error(w, r, http.StatusBadRequest, err)
+			return
+		}
+
+		item, err := s.repository.TodoItem.GetById(userId, itemId)
+		if err != nil {
+			s.error(w, r, http.StatusInternalServerError, err)
+			return
+		}
+
+		s.respond(w, r, http.StatusOK, item)
+	}
+}
+
+func (s *server) updateItem() http.HandlerFunc {
+	type request struct {
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		Done        bool   `json:"done"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		req := &request{}
+		if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+			s.error(w, r, http.StatusBadRequest, err)
+			return
+		}
+
+		u := r.Context().Value(ctxKeyUser).(*models.User)
+		userId := u.ID
+
+		vars := mux.Vars(r)
+		itemId, err := strconv.Atoi(vars["id"])
+		if err != nil {
+			s.error(w, r, http.StatusBadRequest, err)
+			return
+		}
+
+		input := &models.UpdateItemInput{
+			Title:       &req.Title,
+			Description: &req.Description,
+			Done:        &req.Done,
+		}
+
+		if err := s.repository.TodoItem.Update(userId, itemId, input); err != nil {
+			s.error(w, r, http.StatusInternalServerError, err)
+			return
+		}
+
+		s.respond(w, r, http.StatusOK, nil)
+	}
+}
+
+func (s *server) deleteItem() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := r.Context().Value(ctxKeyUser).(*models.User)
+		userId := u.ID
+
+		vars := mux.Vars(r)
+		itemId, err := strconv.Atoi(vars["id"])
+		if err != nil {
+			s.error(w, r, http.StatusBadRequest, err)
+			return
+		}
+
+		err = s.repository.TodoItem.Delete(userId, itemId)
+		if err != nil {
 			s.error(w, r, http.StatusInternalServerError, err)
 			return
 		}

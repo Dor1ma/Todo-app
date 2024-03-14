@@ -8,3 +8,5 @@ Technologies:
 - Gorilla mux (web framework)
 - PostgreSQL
 - Docker
+
+In current state all functions works correctly but project has to be refactored
