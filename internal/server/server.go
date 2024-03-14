@@ -64,7 +64,7 @@ func (s *server) configureRouter() {
 	items := todos.PathPrefix("/{id}/items").Subrouter()
 	items.HandleFunc("/", s.getAllItems()).Methods("GET")
 	items.HandleFunc("/{id}", s.getItemById()).Methods("GET")
-	//items.HandleFunc("/", s.createItem()).Methods("POST")
+	items.HandleFunc("/", s.createItem()).Methods("POST")
 	items.HandleFunc("/{id}", s.updateItem()).Methods("PUT")
 	items.HandleFunc("/{id}", s.deleteItem()).Methods("DELETE")
 }
@@ -283,7 +283,7 @@ func (s *server) getAllLists() http.HandlerFunc {
 	}
 }
 
-/*func (s *server) createItem() http.HandlerFunc {
+func (s *server) createItem() http.HandlerFunc {
 	type request struct {
 		Title       string `json:"title"`
 		Description string `json:"description"`
@@ -296,9 +296,6 @@ func (s *server) getAllLists() http.HandlerFunc {
 			return
 		}
 
-		u := r.Context().Value(ctxKeyUser).(*models.User)
-		userId := u.ID
-
 		vars := mux.Vars(r)
 		listId, err := strconv.Atoi(vars["id"])
 		if err != nil {
@@ -307,7 +304,9 @@ func (s *server) getAllLists() http.HandlerFunc {
 		}
 
 		item := &models.ToDoItem{
-			Title: req.Title,
+			Title:       req.Title,
+			Description: req.Description,
+			Done:        false,
 		}
 
 		id, err := s.repository.TodoItem.Create(listId, item)
@@ -320,7 +319,7 @@ func (s *server) getAllLists() http.HandlerFunc {
 			"id": id,
 		})
 	}
-}*/
+}
 
 func (s *server) getAllItems() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
