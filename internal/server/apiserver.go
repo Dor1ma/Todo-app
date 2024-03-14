@@ -9,7 +9,7 @@ import (
 )
 
 func Start() error {
-	connStr := "postgres://postgres:postgres@localhost:6432/postgres?sslmode=disable"
+	connStr := "postgres://postgres:postgres@localhost:5437/postgres?sslmode=disable"
 	db, err := newDB(connStr)
 	if err != nil {
 		return err
