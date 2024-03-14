@@ -8,5 +8,5 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=postgres
     ports:
-      - "6432:5432"
+      - "5437:5432"
     restart: unless-stopped
