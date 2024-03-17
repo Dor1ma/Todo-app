@@ -27,7 +27,7 @@ func (s *server) handleUsersCreate() http.HandlerFunc {
 			Password: req.Password,
 		}
 
-		if _, err := s.repository.Authorization.Create(u); err != nil {
+		if _, err := s.services.Authorization.CreateUser(u); err != nil {
 			s.error(writer, r, http.StatusUnprocessableEntity, err)
 			return
 		}
@@ -51,7 +51,7 @@ func (s *server) authenticateUser(next http.Handler) http.Handler {
 			return
 		}
 
-		u, err := s.repository.Authorization.Find(id.(int))
+		u, err := s.services.Authorization.Find(id.(int))
 		if err != nil {
 			s.error(w, r, http.StatusUnauthorized, errNotAuthenticated)
 		}
@@ -80,7 +80,7 @@ func (s *server) handleSessionsCreate() http.HandlerFunc {
 			return
 		}
 
-		u, err := s.repository.Authorization.FindByEmail(req.Email)
+		u, err := s.services.Authorization.FindByEmail(req.Email)
 		if err != nil || !u.ComparePassword(req.Password) {
 			s.error(w, r, http.StatusUnauthorized, errIncorrectEmailOrPassword)
 			return

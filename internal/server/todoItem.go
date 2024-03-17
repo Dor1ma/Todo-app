@@ -34,7 +34,10 @@ func (s *server) createItem() http.HandlerFunc {
 			Done:        false,
 		}
 
-		id, err := s.repository.TodoItem.Create(listId, item)
+		u := r.Context().Value(ctxKeyUser).(*models.User)
+		userId := u.ID
+
+		id, err := s.services.TodoItem.Create(userId, listId, item)
 		if err != nil {
 			s.error(w, r, http.StatusInternalServerError, err)
 			return
@@ -58,7 +61,7 @@ func (s *server) getAllItems() http.HandlerFunc {
 			return
 		}
 
-		items, err := s.repository.TodoItem.GetAll(userId, listId)
+		items, err := s.services.TodoItem.GetAll(userId, listId)
 		if err != nil {
 			s.error(w, r, http.StatusInternalServerError, err)
 			return
@@ -80,7 +83,7 @@ func (s *server) getItemById() http.HandlerFunc {
 			return
 		}
 
-		item, err := s.repository.TodoItem.GetById(userId, itemId)
+		item, err := s.services.TodoItem.GetById(userId, itemId)
 		if err != nil {
 			s.error(w, r, http.StatusInternalServerError, err)
 			return
@@ -120,7 +123,7 @@ func (s *server) updateItem() http.HandlerFunc {
 			Done:        &req.Done,
 		}
 
-		if err := s.repository.TodoItem.Update(userId, itemId, input); err != nil {
+		if err := s.services.TodoItem.Update(userId, itemId, input); err != nil {
 			s.error(w, r, http.StatusInternalServerError, err)
 			return
 		}
@@ -141,7 +144,7 @@ func (s *server) deleteItem() http.HandlerFunc {
 			return
 		}
 
-		err = s.repository.TodoItem.Delete(userId, itemId)
+		err = s.services.TodoItem.Delete(userId, itemId)
 		if err != nil {
 			s.error(w, r, http.StatusInternalServerError, err)
 			return

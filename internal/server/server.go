@@ -1,7 +1,7 @@
 package server
 
 import (
-	"Todo-app/internal/repository"
+	"Todo-app/internal/service"
 	"encoding/json"
 	"errors"
 	"github.com/gorilla/mux"
@@ -20,9 +20,9 @@ const (
 )
 
 type server struct {
-	router     *mux.Router
-	repository repository.Repository
-	sessions   sessions.Store
+	router   *mux.Router
+	services service.Service
+	sessions sessions.Store
 }
 
 type ctxKey int8
@@ -31,11 +31,11 @@ func (s *server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	s.router.ServeHTTP(writer, request)
 }
 
-func newServer(repository repository.Repository, sessionStore sessions.Store) *server {
+func newServer(services service.Service, sessionStore sessions.Store) *server {
 	s := &server{
-		router:     mux.NewRouter(),
-		repository: repository,
-		sessions:   sessionStore,
+		router:   mux.NewRouter(),
+		services: services,
+		sessions: sessionStore,
 	}
 
 	s.configureRouter()

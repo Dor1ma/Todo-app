@@ -28,7 +28,7 @@ func (s *server) handleTodosCreate() http.HandlerFunc {
 			Description: req.Description,
 		}
 
-		if _, err := s.repository.TodoList.Create(userID, t); err != nil {
+		if _, err := s.services.TodoList.Create(userID, t); err != nil {
 			s.error(w, r, http.StatusUnprocessableEntity, err)
 			return
 		}
@@ -63,7 +63,7 @@ func (s *server) handleTodosUpdate() http.HandlerFunc {
 			Description: &req.Description,
 		}
 
-		if err := s.repository.TodoList.Update(userID, id, t); err != nil {
+		if err := s.services.TodoList.Update(userID, id, t); err != nil {
 			s.error(w, r, http.StatusUnprocessableEntity, err)
 			return
 		}
@@ -81,7 +81,7 @@ func (s *server) handleTodosDelete() http.HandlerFunc {
 			return
 		}
 
-		if err := s.repository.TodoList.Delete(id, r.Context().Value(ctxKeyUser).(*models.User).ID); err != nil {
+		if err := s.services.TodoList.Delete(id, r.Context().Value(ctxKeyUser).(*models.User).ID); err != nil {
 			s.error(w, r, http.StatusUnprocessableEntity, err)
 			return
 		}
@@ -102,7 +102,7 @@ func (s *server) getListById() http.HandlerFunc {
 			return
 		}
 
-		list, err := s.repository.TodoList.GetById(userId, id)
+		list, err := s.services.TodoList.GetById(userId, id)
 		if err != nil {
 			s.error(w, r, http.StatusInternalServerError, err)
 			return
@@ -117,7 +117,7 @@ func (s *server) getAllLists() http.HandlerFunc {
 		u := r.Context().Value(ctxKeyUser).(*models.User)
 		userId := u.ID
 
-		lists, err := s.repository.TodoList.GetAll(userId)
+		lists, err := s.services.TodoList.GetAll(userId)
 		if err != nil {
 			s.error(w, r, http.StatusInternalServerError, err)
 			return

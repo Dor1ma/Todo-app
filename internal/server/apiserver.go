@@ -2,6 +2,7 @@ package server
 
 import (
 	"Todo-app/internal/repository"
+	"Todo-app/internal/service"
 	"database/sql"
 	"github.com/gorilla/sessions"
 	_ "github.com/lib/pq"
@@ -20,8 +21,8 @@ func Start() error {
 	repos := repository.NewRepository(db)
 	//temp key
 	sessionStore := sessions.NewCookieStore([]byte("239239"))
-	// don't forget to check that part
-	srv := newServer(*repos, sessionStore)
+	services := service.NewService(repos)
+	srv := newServer(*services, sessionStore)
 	constAddr := ":8080"
 
 	return http.ListenAndServe(constAddr, srv)
